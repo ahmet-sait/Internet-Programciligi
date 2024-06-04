@@ -1,0 +1,286 @@
+﻿
+<div class="row">
+    <div class="col-md-8">
+        <h4>Vehicles</h4>
+        <a href="/Categories">Categories</a> | <span id="catName"></span>
+        <table class="table" id="tbVehicleList">
+            <thead>
+                <tr>
+                    <th>Id</th>
+                    <th>Vehicle Name</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Date of registration</th>
+                    <th>Issue Date</th>
+                    <th id="İslemler">Transactions</th>
+                </tr>
+            </thead>
+
+            <tbody>
+            </tbody>
+        </table>
+
+    </div>
+    <div class="col-md-4" id="divAddUpdate">
+        <h4 id="editHeader">Add Vehicle</h4>
+
+        <div class="b-2">
+            <label>Vehicle Name</label>
+            <input type="text" class="form-control" id="txtName" />
+            <input type="hidden" id="txtId" />
+        </div>
+        <div class="b-2">
+            <label>Vehicle Price</label>
+            <input type="text" class="form-control" id="txtPrice" />
+
+        </div>
+        <div class="b-2">
+            <label>Vehicle Categories</label>
+            <select class="form-select" id="cbCategory">
+            </select>
+
+        </div>
+        <div class="b-2">
+            <input type="checkbox" class="form-check-inline" id="cbIsActive" />
+            <label>Active</label>
+        </div>
+        <div class="mb-2">
+            <button class="btn btn-outline-primary btn-sm" id="btnSave">Save</button>
+            <button class="btn btn-outline-primary btn-sm" id="btnEdit">Edit</button>
+            <button class="btn btn-outline-danger btn-sm" id="btnDelete">Delete</button>
+            <button class="btn btn-outline-secondary btn-sm" id="btnCancel">Give Up</button>
+        </div>
+
+
+        <div id="result"></div>
+
+    </div>
+</div>
+
+@section Scripts{
+
+    <script>
+        $(document).ready(function () {
+            var ApiBaseUrl = "@ViewBag.ApiBaseUrl";
+            var catId = "@ViewBag.CatId";
+            VehicleList();
+            CategoriList();
+            CategoryById();
+            $("#btnEdit").hide();
+            $("#btnDelete").hide();
+
+
+            function CategoriList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories",
+                    method: "GET",
+                    contentType: "application/json",
+                    success: function (data) {
+                        var opt = "";
+                        $("#cbCategory").empty();
+                        $.each(data, function (i, item) {
+
+                            if (catId == item.id) {
+                                opt = '<option value="' + item.id + '" selected>' + item.name + '</option>';
+                            } else {
+                                opt = '<option value="' + item.id + '">' + item.name + '</option>';
+                            }
+
+                            $("#cbCategory").append(opt);
+                        });
+
+                    },
+                    error: function () { }
+                });
+        
+            }
+            function CategoryById() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + catId,
+                    method: "GET",
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#catName").html("<b>" + data.name + "<b>");
+                    },
+                    error: function () { }
+                });
+            }
+            function VehicleList() {
+                $.ajax({
+                    url: ApiBaseUrl + "Categories/" + catId + "/Vehicle",
+                    method: "GET",
+                    contentType: "application/json",
+                    success: function (data) {
+                        VehicleListToTable(data);
+                    },
+                    error: function () { }
+                });
+            }
+            function VehicleListToTable(data) {
+                $("#tbVehicleList tbody").empty();
+                var tr = '';
+                $.each(data, function (i, item) {
+                    var bg = item.isActive ? 'bg-success' : 'bg-danger';
+
+                    tr += '<tr><td>' + item.id + '</td><td>' + item.name + '</td><td>' + item.price + '</td><td><span class="badge ' + bg + '">' + (item.isActive ? 'Active' : 'Passive') + '</span></td><td>' + FormatDate(item.created) + '</td><td>' + FormatDate(item.updated) + '</td><td><button class="btn btn-outline-primary btn-sm edit" id=' + item.id + '>Edit</td></tr>'
+                });
+
+                $("#tbVehicleList tbody").append(tr);
+
+                if (!userRoles.includes("Admin")) {
+
+                    $("#divAddUpdate").hide();
+                    $("#İslemler").hide();
+                    $("#divList").removeClass("col-md-8").addClass("col-md-12");
+                    $(".edit").hide();
+                }
+            }
+            function FormatDate(d) {
+                var date = new Date(d);
+                var day = date.getDate() > 9 ? date.getDate() : '0' + date.getDate();
+                var mount = date.getMonth() > 9 ? date.getMonth() : '0' + date.getMonth();
+                var year = date.getFullYear();
+
+                var hour = date.getHours() > 9 ? date.getHours() : '0' + date.getHours();
+                var minute = date.getMinutes() > 9 ? date.getMinutes() : '0' + date.getMinutes();
+                var second = date.getSeconds() > 9 ? date.getSeconds() : '0' + date.getSeconds();
+
+                var fd = day + "." + mount + "." + year + " " + hour + ":" + minute + ":" + second;
+                return fd
+            }
+
+
+            $("#btnSave").click(function () {
+                var name = $("#txtName").val();
+                var price = $("#txtPrice").val();
+                var categoryId = $("#cbCategory").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var vehicle = new Object();
+                vehicle.Name = name;
+                vehicle.Price = price;
+                vehicle.CategoryId = categoryId;
+                vehicle.IsActive = isActive;
+
+                $.ajax({
+                    url: ApiBaseUrl + "Vehicle",
+                    method: "POST",
+                    data: JSON.stringify(vehicle),
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            VehicleList();
+                        }
+                        else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function () { }
+                });
+
+            });
+            
+            $(document).on("click", ".edit", function () {
+                var id = $(this).attr("id");
+                $.ajax({
+                    url: ApiBaseUrl + "Vehicle/" + id,
+                    method: "GET",
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#txtId").val(data.id);
+                        $("#txtName").val(data.name);
+                        $("#txtPrice").val(data.price);
+                        $("#cbCategory").val(data.categoryId);
+                        $("#cbIsActive").prop("checked", data.isActive);
+
+                        $("#btnEdit").show();
+                        $("#btnDelete").show();
+                        $("#btnSave").hide();
+                        $("#editHeader").html("Edit Vehicle - Delete");
+                    },
+                    error: function () { }
+                });
+
+
+            });
+
+
+            $("#btnCancel").click(function () {
+                $("#txtId").val("");
+                $("#txtName").val("");
+                $("#cbIsActive").prop("checked", false);
+                $("#btnEdit").hide();
+                $("#btnDelete").hide();
+                $("#btnSave").show();
+                $("#editHeader").html("Ürün Ekle");
+
+            });
+
+
+            $("#btnEdit").click(function () {
+
+                var id = $("#txtId").val();
+                var name = $("#txtName").val();
+                var price = $("#txtPrice").val();
+                var categoryId = $("#cbCategory").val();
+                var isActive = $("#cbIsActive").is(":checked");
+                var vehicle = new Object();
+                vehicle.Id = id;
+                vehicle.Name = name;
+                vehicle.Price = price;
+                vehicle.CategoryId = categoryId;
+                vehicle.IsActive = isActive;
+
+                $.ajax({
+                    url: ApiBaseUrl + "Vehicle",
+                    method: "PUT",
+                    data: JSON.stringify(vehicle),
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            VehicleList();
+                        }
+                        else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function () { }
+                });
+
+
+            });
+
+            $("#btnDelete").click(function () {
+                console.log("sil");
+                var id = $("#txtId").val();
+                $.ajax({
+                    url: ApiBaseUrl + "Vehicle/" + id,
+                    method: "DELETE",
+                    contentType: "application/json",
+                    success: function (data) {
+                        $("#result").show();
+                        if (data.status) {
+                            $("#result").removeClass().addClass("alert alert-success");
+                            VehicleList();
+                        }
+                        else {
+                            $("#result").removeClass().addClass("alert alert-danger");
+                        }
+                        $("#result").html(data.message);
+                        $("#result").fadeOut(3000);
+                    },
+                    error: function () { }
+                });
+
+
+            });
+        });
+    </script>
+}

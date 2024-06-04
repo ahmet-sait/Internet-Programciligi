@@ -1,0 +1,3 @@
+﻿<Project>
+  <Import Project="..\build\AracKiralama.API.props" />
+</Project>
